@@ -10,17 +10,22 @@ class CNN_cifar10_2:
         self.poling2 = torch.nn.AvgPool2d(2,2) # 28 channels 5x5
         self.conv3 = torch.nn.Conv2d(18,32,3) # 32 channels 3x3
         self.flatten1 = torch.nn.Flatten(-3,2) # 288
-        self.FC1 = torch.nn.Linear(288, 20)
-        self.FC2 = torch.nn.Linear(20,12)
+        self.FC1 = torch.nn.Linear(288, 90)
+        self.FC2 = torch.nn.Linear(90, 64)
+        self.FC3 = torch.nn.Linear(64, 20)
+        self.FC4 = torch.nn.Linear(20,12)
         self.out = torch.nn.Linear(12,10)
         self.dropout1 = torch.nn.Dropout(p=0.1)
         self.dropout2 = torch.nn.Dropout(p=0.05)
         self.model = torch.nn.Sequential(
             self.conv1,
+            torch.nn.ReLU(),
             self.poling1,
             self.conv2,
+            torch.nn.ReLU(),
             self.poling2,
             self.conv3,
+            torch.nn.ReLU(),
             self.flatten1,
             self.FC1,
             torch.nn.ReLU(),
@@ -28,12 +33,16 @@ class CNN_cifar10_2:
             self.FC2,
             torch.nn.ReLU(),
             self.dropout2,
+            self.FC3,
+            torch.nn.ReLU(),
+            self.FC4,
+            torch.nn.ReLU(),
             self.out,
             torch.nn.Softmax(dim = -1)
         )
 
     def forward_pass(self, x : torch.Tensor):
-        return self.model(x.T)
+        return self.model(x.permute(*torch.arange(x.ndim - 1, -1, -1)))
     
     def train(self,nr_epoch, dataloader : DataLoader, x_test, y_test, learning_rate = 1e-4)->Tuple[List[float],List[float],List[float],List[float]]:
         """
@@ -49,6 +58,9 @@ class CNN_cifar10_2:
             train_accuracy : List[float] - training accuracy
             test_accuracy : List[float] - test accuracy
         """
+        best_accuracy = 0.0
+        path = "./model1.pth"
+
         test_accuracy = []
         train_accuracy = []
         test_loss = []
@@ -91,5 +103,7 @@ class CNN_cifar10_2:
                 test_loss.append(mean_loss)
                 accuracy = accuracy/len(dataloader)
                 test_accuracy.append(accuracy)
+            if best_accuracy < accuracy:
+                torch.save(self, path) 
             print(f"EPOCH: {epoch+1}, TEST_LOSS{mean_loss}, TEST_ACCURACY{accuracy}")
         return train_loss,test_loss,train_accuracy,test_accuracy
